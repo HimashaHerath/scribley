@@ -1,0 +1,68 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+.secrets.*
+*.pem
+*.key
+credentials.json
+*_token.json
+tokens/
+.secrets.baseline
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm/
+.yarn/
+
+# Build output
+dist/
+build/
+.next/
+out/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Docker
+.docker/
+docker-volumes/
+
+# OS specific
+Thumbs.db
+
+# Scribley specific
+.scribley/ 

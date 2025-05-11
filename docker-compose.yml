@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: scribley-api
+    env_file:
+      - .env
+    environment:
+      - DEBUG=true
+      - DATABASE_URL=sqlite:///data/scribley.db
+      - API_PORT=8080
+      - FRONTEND_URL=http://localhost:5173
+      # Do not add sensitive tokens here - use the .env file
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+      - ./scribley:/app/scribley
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.client
+    container_name: scribley-client
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8080/api
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  data: 
