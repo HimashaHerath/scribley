@@ -10,8 +10,10 @@ from fastapi import Request
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .routers import articles, publications, users
+from .routers import articles, publications, users, llm
 from ..database.init_db import init_db
+from scribley.api.database import get_db, engine, Base
+from scribley.api.medium import MediumAPIClient
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -163,4 +165,5 @@ async def health_check():
 # Include routers from other modules
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(articles.router, prefix="/api/articles", tags=["Articles"])
-app.include_router(publications.router, prefix="/api/publications", tags=["Publications"]) 
+app.include_router(publications.router, prefix="/api/publications", tags=["Publications"])
+app.include_router(llm.router, prefix="/api/llm", tags=["LLM"]) 
