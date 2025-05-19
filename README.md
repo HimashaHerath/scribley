@@ -33,12 +33,57 @@ Scribley makes your Medium writing workflow faster and more efficient:
 - 🔍 **Search and filter** your articles and publications
 - 💾 **Offline editing** with automatic syncing
 - 🔒 **Secure authentication** with Medium API tokens
+- ✏️ **Rich Text Editor** with Markdown support and formatting tools
+- 🖼️ **Image management** with upload, alignment, and size control
+- 📊 **Table support** for structured data in your articles
+- 🌐 **Offline fallback** for image uploads when Medium API is unavailable
+
+## ⚠️ Medium API Status
+
+**Important Note**: Medium's official API was archived in March 2023. Scribley is currently using it in a limited capacity, but it may stop functioning at any time. Consider saving a backup of your content.
+
+Alternative API options:
+- **RapidAPI's Medium API**: A commercial API with tiered pricing
+  - Free: 150 calls/month
+  - PRO: $4.99/month
+  - ULTRA: $24.99/month
+  - MEGA: $149.95/month
+- **Web Scraping**: A more advanced approach that may require additional maintenance
+
+Scribley implements several fallback mechanisms to help you continue working even if the Medium API becomes unavailable:
+- Local image storage fallback
+- Draft saving to local database
+- Export options for your content
 
 ## 📸 Screenshots
 
 <div align="center">
 <img src="client/public/assets/images/Dashboard.png" alt="Scribley Dashboard" width="80%">
 </div>
+
+## ✏️ Rich Text Editor
+
+Scribley includes a powerful Rich Text Editor with:
+
+- **Markdown Support**: Write in Markdown with real-time preview
+- **Formatting Toolbar**: Easy access to common formatting options
+- **Image Management**: Upload, align, and resize images with intuitive controls
+- **Table Support**: Create and format tables for structured data
+- **Code Blocks**: Share code with syntax highlighting
+- **Blockquotes & Lists**: Organize your content effectively
+- **Live Preview**: See how your content will look as you write
+- **Offline Fallback**: Continue working even when API connectivity is limited
+
+## 🖼️ Image Management
+
+The integrated image upload system offers:
+
+- Drag & drop or file browser upload options
+- Image alignment controls (left, center, right)
+- Image size presets (small, medium, large)
+- Automatic error handling and validation
+- Offline fallback with data URLs when Medium API is unavailable
+- Secure file handling with size and type validation
 
 ## 🏗️ Project Structure
 
@@ -388,4 +433,21 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 Made with ❤️ for Medium writers everywhere
-</div> 
+</div>
+
+## 🤝 Contributing
+
+Contributions are welcome! Here's how to get started:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Commit your changes (`git commit -m 'Add some amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+Please make sure your code follows our coding standards and includes tests.
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 

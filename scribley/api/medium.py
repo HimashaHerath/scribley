@@ -143,6 +143,41 @@ class MediumAPIClient:
         )
         response.raise_for_status()
         return response.json().get("data", [])
+    
+    def upload_image(self, image_data: bytes, filename: str, content_type: str) -> Dict[str, Any]:
+        """
+        Upload an image to Medium.
+        
+        Args:
+            image_data (bytes): The binary data of the image.
+            filename (str): The filename of the image.
+            content_type (str): The MIME type of the image (e.g., 'image/jpeg', 'image/png', etc.).
+        
+        Returns:
+            Dict[str, Any]: The uploaded image information containing 'url' and 'md5'.
+        
+        Raises:
+            requests.exceptions.HTTPError: If the request fails.
+        """
+        # Create a multipart form-data request with image data
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/json",
+            "Accept-Charset": "utf-8"
+        }
+        
+        files = {
+            'image': (filename, image_data, content_type)
+        }
+        
+        response = requests.post(
+            f"{self.BASE_URL}/images",
+            headers=headers,
+            files=files
+        )
+        
+        response.raise_for_status()
+        return response.json().get("data", {})
 
 
 def publish_article(file_path, title=None, tags=None, status=None, 
@@ -223,4 +258,37 @@ def get_user_details():
         dict: User details.
     """
     client = MediumAPIClient()
-    return client.get_current_user() 
+    return client.get_current_user()
+
+
+def upload_image_to_medium(image_path: str) -> Dict[str, Any]:
+    """
+    Upload an image to Medium from a file path.
+    
+    Args:
+        image_path (str): Path to the image file.
+    
+    Returns:
+        dict: The image data with URL and MD5 hash.
+    """
+    # Get file details
+    import os
+    import mimetypes
+    
+    if not os.path.exists(image_path):
+        raise FileNotFoundError(f"Image file not found: {image_path}")
+    
+    # Get the file's content type
+    content_type, _ = mimetypes.guess_type(image_path)
+    if not content_type or not content_type.startswith('image/'):
+        raise ValueError(f"File is not a recognized image format: {image_path}")
+    
+    # Read the file data
+    with open(image_path, 'rb') as f:
+        image_data = f.read()
+    
+    # Upload to Medium
+    client = MediumAPIClient()
+    filename = os.path.basename(image_path)
+    
+    return client.upload_image(image_data, filename, content_type) 

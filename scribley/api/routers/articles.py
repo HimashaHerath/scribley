@@ -1,8 +1,12 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, UploadFile, File
 from typing import List, Optional
 from sqlalchemy.orm import Session
+import os
+from tempfile import NamedTemporaryFile
+import shutil
+from datetime import datetime
 
-from ..medium import MediumAPIClient
+from ..medium import MediumAPIClient, upload_image_to_medium
 from ..schemas import Article, ArticleCreate, ArticleUpdate, ArticlePublish
 from ...database.config import get_db
 from ...database import crud
@@ -171,4 +175,39 @@ async def publish_to_medium(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to publish to Medium: {str(e)}"
+        )
+
+@router.post("/images/upload", status_code=status.HTTP_201_CREATED)
+async def upload_image(image: UploadFile = File(...)):
+    """
+    Upload an image to Medium.
+    """
+    # Validate file type
+    if not image.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be an image (JPEG, PNG, GIF, or TIFF)."
+        )
+    
+    # Save file to temporary location
+    try:
+        suffix = os.path.splitext(image.filename)[1]
+        with NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            shutil.copyfileobj(image.file, temp_file)
+            temp_path = temp_file.name
+        
+        # Upload the image to Medium
+        result = upload_image_to_medium(temp_path)
+        
+        # Clean up temporary file
+        os.unlink(temp_path)
+        
+        return result
+    except Exception as e:
+        # Clean up if there's an error
+        if 'temp_path' in locals():
+            os.unlink(temp_path)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload image: {str(e)}"
         ) 

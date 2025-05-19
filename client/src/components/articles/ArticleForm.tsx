@@ -14,7 +14,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useFetch } from '@/lib/hooks';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Image as ImageIcon, AlertTriangle } from 'lucide-react';
+import { RichTextEditor } from '../articles/RichTextEditor';
+import '@/components/articles/editor.css';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { toast } from 'sonner';
 
 interface ArticleFormProps {
   article?: Article;
@@ -37,6 +41,7 @@ export default function ArticleForm({ article, isEditing = false }: ArticleFormP
   const [publicationId, setPublicationId] = useState(
     article?.publication_id || 'none'
   );
+  const [showAPIWarning, setShowAPIWarning] = useState(true);
   
   // Fetch publications for select box
   const { data: publications } = useFetch(publicationService.getAll, []);
@@ -111,6 +116,23 @@ export default function ArticleForm({ article, isEditing = false }: ArticleFormP
         </div>
       </div>
       
+      {showAPIWarning && (
+        <Alert variant="warning" className="bg-amber-50 border-amber-200">
+          <AlertTriangle className="h-5 w-5 text-amber-600" />
+          <AlertTitle className="text-amber-800 font-medium">Medium API Notice</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            Medium's official API was archived in March 2023. Scribley is currently using it in a limited capacity, but it may stop functioning at any time. Consider saving a backup of your content.
+            <Button
+              variant="link"
+              className="text-amber-800 p-0 h-auto ml-2"
+              onClick={() => setShowAPIWarning(false)}
+            >
+              Dismiss
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-4">
           <div className="space-y-2">
@@ -135,14 +157,11 @@ export default function ArticleForm({ article, isEditing = false }: ArticleFormP
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="content">Content (Markdown)</Label>
-            <Textarea
-              id="content"
-              placeholder="Write your article content using Markdown..."
+            <Label htmlFor="content">Content</Label>
+            <RichTextEditor
               value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="min-h-[300px] font-mono"
-              required
+              onChange={setContent}
+              placeholder="Write your article content..."
             />
           </div>
           
