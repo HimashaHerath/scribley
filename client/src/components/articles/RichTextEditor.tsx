@@ -23,6 +23,7 @@ import {
   Eye,
   Edit,
   Table,
+  BrainCircuit,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -32,6 +33,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { AIAssistantPanel } from './AIAssistantPanel';
 
 interface RichTextEditorProps {
   value: string;
@@ -55,6 +57,7 @@ export function RichTextEditor({ value, onChange, className, placeholder }: Rich
   const [imageAlignment, setImageAlignment] = useState<'left' | 'center' | 'right'>('center');
   const [imageSize, setImageSize] = useState<'small' | 'medium' | 'large'>('medium');
   const [renderedHTML, setRenderedHTML] = useState<string>('');
+  const [isAssistantOpen, setIsAssistantOpen] = useState<boolean>(false);
   
   // Update rendered HTML when content or tab changes
   useEffect(() => {
@@ -142,6 +145,25 @@ export function RichTextEditor({ value, onChange, className, placeholder }: Rich
     }
   };
 
+  // Toggle the AI Assistant panel
+  const toggleAssistantPanel = () => {
+    setIsAssistantOpen(prev => !prev);
+  };
+
+  // Handle content insertion from AI Assistant
+  const handleInsertFromAssistant = (content: string) => {
+    // Switch to edit tab if in preview mode
+    if (activeTab === 'preview') {
+      setActiveTab('edit');
+    }
+    
+    // Insert the content at the current cursor position
+    insertAtCursor(content);
+    
+    // Optionally close the assistant panel after insertion
+    // setIsAssistantOpen(false);
+  };
+
   // Toolbar actions
   const actions = {
     bold: () => insertAtCursor('**Bold Text**'),
@@ -170,6 +192,17 @@ export function RichTextEditor({ value, onChange, className, placeholder }: Rich
               Preview
             </TabsTrigger>
           </TabsList>
+          
+          {/* AI Assistant Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleAssistantPanel}
+            className="flex items-center gap-1"
+          >
+            <BrainCircuit className="h-4 w-4" />
+            AI Assistant
+          </Button>
         </div>
 
         <TabsContent value="edit" className="space-y-2">
@@ -251,7 +284,7 @@ export function RichTextEditor({ value, onChange, className, placeholder }: Rich
               variant="ghost" 
               size="icon" 
               onClick={actions.quote} 
-              title="Blockquote"
+              title="Quote"
               className="h-8 w-8"
             >
               <Quote className="h-4 w-4" />
@@ -266,115 +299,111 @@ export function RichTextEditor({ value, onChange, className, placeholder }: Rich
               <Table className="h-4 w-4" />
             </Button>
 
-            <div className="h-8 border-l mx-1"></div>
-
-            {/* Image dropdown */}
             <DropdownMenu open={showImageDropdown} onOpenChange={setShowImageDropdown}>
               <DropdownMenuTrigger asChild>
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-8 w-8"
                   title="Insert Image"
+                  className="h-8 w-8"
                 >
                   <ImageIcon className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56">
-                <div className="p-2">
-                  <p className="text-sm font-medium mb-2">Image Settings</p>
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Alignment</p>
-                      <div className="flex gap-1">
-                        <Button 
-                          variant={imageAlignment === 'left' ? 'default' : 'outline'} 
-                          size="sm" 
-                          onClick={() => setImageAlignment('left')}
-                          className="h-7 w-7 p-0"
-                        >
-                          <AlignLeft className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          variant={imageAlignment === 'center' ? 'default' : 'outline'} 
-                          size="sm" 
-                          onClick={() => setImageAlignment('center')}
-                          className="h-7 w-7 p-0"
-                        >
-                          <AlignCenter className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          variant={imageAlignment === 'right' ? 'default' : 'outline'} 
-                          size="sm" 
-                          onClick={() => setImageAlignment('right')}
-                          className="h-7 w-7 p-0"
-                        >
-                          <AlignRight className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Size</p>
-                      <div className="flex gap-1">
-                        <Button 
-                          variant={imageSize === 'small' ? 'default' : 'outline'} 
-                          size="sm" 
-                          onClick={() => setImageSize('small')}
-                          className="h-7"
-                        >
-                          Small
-                        </Button>
-                        <Button 
-                          variant={imageSize === 'medium' ? 'default' : 'outline'} 
-                          size="sm" 
-                          onClick={() => setImageSize('medium')}
-                          className="h-7"
-                        >
-                          Medium
-                        </Button>
-                        <Button 
-                          variant={imageSize === 'large' ? 'default' : 'outline'} 
-                          size="sm" 
-                          onClick={() => setImageSize('large')}
-                          className="h-7"
-                        >
-                          Large
-                        </Button>
-                      </div>
-                    </div>
+              <DropdownMenuContent align="start" className="w-56">
+                <div className="px-2 py-1.5">
+                  <p className="text-sm font-medium mb-1.5">Image Alignment</p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Button 
+                      variant={imageAlignment === 'left' ? 'default' : 'outline'} 
+                      size="icon" 
+                      className="h-8 w-8" 
+                      onClick={() => setImageAlignment('left')}
+                    >
+                      <AlignLeft className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant={imageAlignment === 'center' ? 'default' : 'outline'} 
+                      size="icon" 
+                      className="h-8 w-8" 
+                      onClick={() => setImageAlignment('center')}
+                    >
+                      <AlignCenter className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant={imageAlignment === 'right' ? 'default' : 'outline'} 
+                      size="icon" 
+                      className="h-8 w-8" 
+                      onClick={() => setImageAlignment('right')}
+                    >
+                      <AlignRight className="h-4 w-4" />
+                    </Button>
                   </div>
-                </div>
-                <DropdownMenuSeparator />
-                <div className="p-2">
-                  <ImageUpload 
-                    onImageUploaded={handleImageUploaded}
-                  />
+
+                  <p className="text-sm font-medium mb-1.5">Image Size</p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Button 
+                      variant={imageSize === 'small' ? 'default' : 'outline'} 
+                      size="sm" 
+                      className="text-xs h-7 px-2" 
+                      onClick={() => setImageSize('small')}
+                    >
+                      Small
+                    </Button>
+                    <Button 
+                      variant={imageSize === 'medium' ? 'default' : 'outline'} 
+                      size="sm" 
+                      className="text-xs h-7 px-2" 
+                      onClick={() => setImageSize('medium')}
+                    >
+                      Medium
+                    </Button>
+                    <Button 
+                      variant={imageSize === 'large' ? 'default' : 'outline'} 
+                      size="sm" 
+                      className="text-xs h-7 px-2" 
+                      onClick={() => setImageSize('large')}
+                    >
+                      Large
+                    </Button>
+                  </div>
+
+                  <DropdownMenuSeparator className="my-2" />
+                  <ImageUpload onImageUploaded={handleImageUploaded} />
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
 
-          {/* Text area */}
+          {/* Editor */}
           <Textarea
             ref={textareaRef}
+            placeholder={placeholder || "Start writing with markdown..."}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder || "Write your article content using Markdown..."}
-            className="min-h-[300px] font-mono"
+            className="min-h-[300px] font-mono text-sm"
           />
         </TabsContent>
-
-        <TabsContent value="preview">
+        <TabsContent value="preview" className="space-y-2">
+          {/* Preview */}
           <Card>
-            <CardContent className="prose max-w-none p-6 overflow-auto">
-              <div 
-                dangerouslySetInnerHTML={{ __html: renderedHTML }} 
-                className="preview-content min-h-[300px]"
-              />
+            <CardContent className="p-4 prose max-w-none">
+              {value.trim() ? (
+                <div dangerouslySetInnerHTML={{ __html: renderedHTML }} />
+              ) : (
+                <div className="text-muted-foreground italic">Nothing to preview...</div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* AI Assistant Panel */}
+      <AIAssistantPanel 
+        isOpen={isAssistantOpen} 
+        onClose={toggleAssistantPanel}
+        onInsertContent={handleInsertFromAssistant}
+      />
     </div>
   );
 } 
