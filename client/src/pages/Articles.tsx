@@ -32,10 +32,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Eye, MoreHorizontal, Pencil, Plus, Trash, Upload } from 'lucide-react';
+import { Eye, MoreHorizontal, Pencil, Plus, Trash, Upload, Search, Filter, Clock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 export default function Articles() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -83,103 +87,130 @@ export default function Articles() {
   );
   
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+    <div className="space-y-8">
+      <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Articles</h2>
-          <p className="text-muted-foreground">Manage your Medium articles</p>
+          <p className="text-muted-foreground mt-1">Manage and publish your Medium articles</p>
         </div>
-        <Button asChild>
+        <Button asChild className="gap-2">
           <Link to="/articles/new">
-            <Plus className="mr-2 h-4 w-4" /> New Article
+            <Plus className="h-4 w-4" /> New Article
           </Link>
         </Button>
       </div>
       
-      {/* Filters */}
-      <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-        <Input
-          placeholder="Search articles..."
-          value={searchFilter}
-          onChange={e => setSearchFilter(e.target.value)}
-          className="sm:max-w-xs"
-        />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="sm:w-[180px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="public">Published</SelectItem>
-            <SelectItem value="unlisted">Unlisted</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <Card className="border-border/50">
+        <CardContent className="p-6">
+          {/* Filters */}
+          <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4 sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search articles..."
+                value={searchFilter}
+                onChange={e => setSearchFilter(e.target.value)}
+                className="pl-9 w-full"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="public">Published</SelectItem>
+                  <SelectItem value="unlisted">Unlisted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       
       {/* Articles Table */}
       {isLoading ? (
-        <div className="flex items-center justify-center h-60">
-          <p>Loading articles...</p>
-        </div>
+        <Card>
+          <CardContent className="p-32 flex items-center justify-center">
+            <div className="animate-pulse flex flex-col items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-muted"></div>
+              <p className="text-muted-foreground">Loading articles...</p>
+            </div>
+          </CardContent>
+        </Card>
       ) : filteredArticles && filteredArticles.length > 0 ? (
-        <div className="rounded-md border">
+        <Card className="border-border/50">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[40%]">Title</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Published</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
+                <TableHead className="w-[100px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredArticles.map(article => (
-                <TableRow key={article.id}>
-                  <TableCell className="font-medium">
-                    <Link to={`/articles/${article.id}`} className="hover:underline">
-                      {article.title}
+              {filteredArticles.map((article, idx) => (
+                <TableRow key={article.id} className="group">
+                  <TableCell className="font-medium py-4">
+                    <Link to={`/articles/${article.id}`} className="hover:underline block transition-colors group-hover:text-primary">
+                      <span className="line-clamp-1">{article.title}</span>
+                      {article.subtitle && (
+                        <p className="text-sm text-muted-foreground truncate max-w-xs mt-1 font-normal">
+                          {article.subtitle}
+                        </p>
+                      )}
                     </Link>
-                    {article.subtitle && (
-                      <p className="text-sm text-muted-foreground truncate max-w-xs">
-                        {article.subtitle}
-                      </p>
-                    )}
                   </TableCell>
                   <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(article.status)}`}>
-                      {article.status}
-                    </span>
+                    <Badge variant={article.status === 'public' ? 'default' : 'outline'} className="font-normal">
+                      {article.status === 'public' ? 'Published' : article.status === 'draft' ? 'Draft' : 'Unlisted'}
+                    </Badge>
                   </TableCell>
-                  <TableCell>{formatDate(article.created_at)}</TableCell>
-                  <TableCell>
-                    {article.published_at ? formatDate(article.published_at) : '-'}
+                  <TableCell className="text-muted-foreground text-sm">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatDate(article.created_at)}
+                    </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {article.published_at ? (
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDate(article.published_at)}
+                      </div>
+                    ) : '-'}
+                  </TableCell>
+                  <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
                           <MoreHorizontal className="h-4 w-4" />
                           <span className="sr-only">Actions</span>
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => navigate(`/articles/${article.id}`)}>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem onClick={() => navigate(`/articles/${article.id}`)} className="cursor-pointer">
                           <Eye className="mr-2 h-4 w-4" /> View
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/articles/${article.id}/edit`)}>
+                        <DropdownMenuItem onClick={() => navigate(`/articles/${article.id}/edit`)} className="cursor-pointer">
                           <Pencil className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => publishArticle(article.id)}
                           disabled={isPublishing}
+                          className="cursor-pointer"
                         >
-                          <Upload className="mr-2 h-4 w-4" /> Publish to Medium
+                          <Upload className="mr-2 h-4 w-4" /> Publish
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           onClick={() => setConfirmDelete(article.id)}
-                          className="text-destructive focus:text-destructive"
+                          className="text-destructive focus:text-destructive cursor-pointer"
                         >
                           <Trash className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
@@ -190,23 +221,26 @@ export default function Articles() {
               ))}
             </TableBody>
           </Table>
-        </div>
+        </Card>
       ) : (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-          <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
-            <h3 className="mt-4 text-lg font-semibold">No articles found</h3>
-            <p className="mb-4 mt-2 text-sm text-muted-foreground">
-              {searchFilter || statusFilter 
+        <Card className="border-dashed border-2 bg-transparent">
+          <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+            <div className="rounded-full bg-primary/10 h-16 w-16 flex items-center justify-center mb-4">
+              <Pencil className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No articles found</h3>
+            <CardDescription className="max-w-md mb-6">
+              {searchFilter || statusFilter !== 'all'
                 ? "Try adjusting your filters or create a new article."
                 : "Get started by creating your first article."}
-            </p>
-            <Button asChild>
+            </CardDescription>
+            <Button asChild className="gap-2">
               <Link to="/articles/new">
-                <Plus className="mr-2 h-4 w-4" /> New Article
+                <Plus className="h-4 w-4" /> New Article
               </Link>
             </Button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
       
       {/* Delete Confirmation Dialog */}
@@ -219,7 +253,8 @@ export default function Articles() {
               from our servers.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <Separator className="my-4" />
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setConfirmDelete(null)} disabled={isDeleting}>
               Cancel
             </Button>
@@ -227,8 +262,14 @@ export default function Articles() {
               variant="destructive" 
               onClick={() => confirmDelete && deleteArticle(confirmDelete)}
               disabled={isDeleting}
+              className="gap-2"
             >
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              {isDeleting ? 'Deleting...' : (
+                <>
+                  <Trash className="h-4 w-4" />
+                  Delete
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

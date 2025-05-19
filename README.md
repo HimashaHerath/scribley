@@ -94,7 +94,7 @@ The easiest way to get started is with Docker:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/scribley.git
+   git clone https://github.com/HimashaHerath/scribley.git
    cd scribley
    ```
 
@@ -117,7 +117,7 @@ The easiest way to get started is with Docker:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/scribley.git
+   git clone https://github.com/HimashaHerath/scribley.git
    cd scribley
    ```
 

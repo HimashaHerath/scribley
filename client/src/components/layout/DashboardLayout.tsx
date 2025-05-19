@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from '../ui/button';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
@@ -47,7 +47,7 @@ function SidebarItem({ icon, label, href, active }: SidebarItemProps) {
       <Button
         variant={active ? "default" : "ghost"}
         className={cn(
-          "w-full justify-start gap-2 pl-2",
+          "w-full justify-start gap-3 pl-3 py-6 transition-all hover:translate-x-1",
           active ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""
         )}
       >
@@ -70,12 +70,23 @@ function Sidebar({
 }) {
   const navigate = useNavigate();
   
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024 && isOpen) {
+        onClose();
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isOpen, onClose]);
+  
   return (
     <>
       {/* Mobile sidebar backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 z-20 bg-black/50 lg:hidden" 
+          className="fixed inset-0 z-20 bg-black/50 backdrop-blur-sm transition-opacity lg:hidden" 
           onClick={onClose}
         />
       )}
@@ -83,19 +94,19 @@ function Sidebar({
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed top-0 left-0 z-30 h-full w-64 bg-card transform transition-transform duration-200 ease-in-out lg:static lg:translate-x-0",
+          "fixed top-0 left-0 z-30 h-full w-72 bg-card shadow-lg transform transition-transform duration-300 ease-in-out lg:shadow-none lg:static lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex flex-col h-full border-r">
-          <div className="p-4 flex items-center justify-between border-b">
-            <h1 className="text-xl font-semibold">Scribley</h1>
-            <Button variant="ghost" size="icon" onClick={onClose} className="lg:hidden">
+          <div className="p-5 flex items-center justify-between border-b">
+            <h1 className="text-2xl font-bold tracking-tight">Scribley</h1>
+            <Button variant="ghost" size="icon" onClick={onClose} className="lg:hidden hover:bg-background/10">
               <X size={20} />
             </Button>
           </div>
           
-          <div className="flex-1 py-4 space-y-1 px-3">
+          <div className="flex-1 py-6 space-y-2 px-4">
             {NAV_ITEMS.map((item) => (
               <SidebarItem 
                 key={item.href}
@@ -109,7 +120,8 @@ function Sidebar({
           
           <div className="p-4 border-t">
             <Button 
-              className="w-full justify-start gap-2"
+              className="w-full justify-start gap-2 py-6 bg-primary/10 hover:bg-primary/20 text-primary"
+              variant="ghost"
               onClick={() => navigate('/articles/new')}
             >
               <PlusCircle size={20} />
@@ -138,22 +150,24 @@ function UserMenu({
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       {isLoading ? (
-        <Skeleton className="h-8 w-8 rounded-full" />
+        <Skeleton className="h-10 w-10 rounded-full" />
       ) : user ? (
         <>
-          <Avatar>
+          <Avatar className="h-10 w-10 border-2 border-primary/10">
             <AvatarImage src={user.image_url} alt={user.name} />
-            <AvatarFallback>{getInitials()}</AvatarFallback>
+            <AvatarFallback className="bg-primary/10 text-primary font-medium">{getInitials()}</AvatarFallback>
           </Avatar>
-          <span className="hidden md:inline-block font-medium">{user.name}</span>
+          <div className="hidden md:block">
+            <span className="font-medium">{user.name}</span>
+          </div>
         </>
       ) : (
         <span className="text-sm text-muted-foreground">Not connected</span>
       )}
-      <Button variant="ghost" size="icon" onClick={onLogout} title="Logout">
-        <LogOut size={20} />
+      <Button variant="ghost" size="icon" onClick={onLogout} title="Logout" className="hover:bg-destructive/10 hover:text-destructive">
+        <LogOut size={18} />
       </Button>
     </div>
   );
@@ -184,6 +198,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }, 500);
   };
   
+  // Close sidebar when navigating
+  useEffect(() => {
+    closeSidebar();
+  }, [location.pathname]);
+  
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar 
@@ -195,8 +214,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="h-16 border-b flex items-center justify-between px-4 lg:px-6">
-          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden">
+        <header className="h-16 border-b flex items-center justify-between px-4 lg:px-6 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden hover:bg-background/10">
             <Menu size={20} />
           </Button>
           
@@ -210,7 +229,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
         
         {/* Main content */}
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+        <main className="flex-1 p-4 lg:p-8 overflow-auto">
           {children}
         </main>
       </div>
