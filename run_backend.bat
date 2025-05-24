@@ -1,0 +1,3 @@
+@echo off
+echo Starting Scribley Backend Server...
+python run_server.py 

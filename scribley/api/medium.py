@@ -53,23 +53,49 @@ class MediumAPIClient:
     def __init__(self, token: Optional[str] = None):
         self.token = token or os.getenv("MEDIUM_API_TOKEN")
         if not self.token:
+            # Log an error before raising, so it's clear if the token was missing vs. invalid
+            logger.error("MediumAPIClient: MEDIUM_API_TOKEN is not set or empty.")
             raise ValueError("Medium API token is required")
+        
+        # Log partial token for debugging
+        token_display = f"{self.token[:5]}...{self.token[-4:]}" if len(self.token) > 9 else self.token
+        logger.info(f"MediumAPIClient initialized with token: {token_display}")
         
         self.headers = {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "Accept-Charset": "utf-8"
+            "Accept-Charset": "utf-8",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
     
     def get_current_user(self) -> Dict[str, Any]:
         """Get the current user's information"""
-        response = requests.get(
-            f"{self.BASE_URL}/me",
-            headers=self.headers
-        )
-        response.raise_for_status()
-        return response.json()
+        url = f"{self.BASE_URL}/me"
+        logger.info(f"Attempting to get current user from Medium API: {url}")
+        
+        try:
+            response = requests.get(
+                url,
+                headers=self.headers
+            )
+            response.raise_for_status()  # This will raise an HTTPError for 4xx/5xx responses
+            logger.info(f"Successfully fetched user data from /me. Status: {response.status_code}")
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            token_display = f"{self.token[:5]}...{self.token[-4:]}" if len(self.token) > 9 else self.token
+            logger.error(f"HTTPError when calling Medium API /me. Status: {e.response.status_code}. URL: {url}")
+            logger.error(f"Response content: {e.response.text}")
+            logger.error(f"Token used (partial): {token_display}")
+            # Re-raise the exception to be handled by the caller, ensuring the original error isn't masked
+            # This allows the FastAPI endpoint to return the correct HTTP status and detail.
+            raise
+        except requests.exceptions.RequestException as e:
+            logger.error(f"RequestException when calling Medium API /me: {str(e)}. URL: {url}")
+            raise # Re-raise to be handled by caller
+        except Exception as e:
+            logger.error(f"Unexpected error in get_current_user: {str(e)}. URL: {url}", exc_info=True)
+            raise # Re-raise to be handled by caller
     
     def get_user_publications(self, user_id: str) -> List[Dict[str, Any]]:
         """Get publications that the user is a contributor to"""

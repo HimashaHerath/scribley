@@ -21,6 +21,7 @@ class OllamaClient:
     def __init__(self, base_url: str = None, model_name_preference: str = None, sync_requests_lib=None):
         self.base_url = base_url or os.environ.get("OLLAMA_API_URL", "http://localhost:11434")
         self.model: Optional[str] = None
+        self.initialized_successfully: bool = False
         
         if not sync_requests_lib:
             # Fallback if not provided, though it should be by the factory
@@ -75,6 +76,7 @@ class OllamaClient:
             logger.warning("OllamaClient initialized, but NO model is currently set (e.g., no preference, no env var, no available models, or errors during init). Generation will fail until a model is explicitly set.")
         else:
             logger.info(f"OllamaClient initialization complete. Current model: {self.model}")
+            self.initialized_successfully = True
     
     def _validate_connection(self, sync_requests_lib) -> bool:
         """Check if Ollama API is available and responsive."""

@@ -12,7 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .routers import articles, publications, users, llm
 from ..database.init_db import init_db
-from scribley.api.database import get_db, engine, Base
+from ..database.config import get_db, engine, Base
 from scribley.api.medium import MediumAPIClient
 
 # Configure logging

@@ -37,14 +37,16 @@ class LLMFactory:
         # Check for Ollama
         if OllamaClient is not None:
             try:
-                client = OllamaClient()
-                if client._validate_connection():
+                # Pass the requests library to OllamaClient constructor
+                import requests
+                client = OllamaClient(sync_requests_lib=requests)
+                if client.initialized_successfully: # Use the new status attribute
                     self.providers["ollama"] = client
                     if self.default_provider is None:
                         self.default_provider = "ollama"
                     logger.info("Ollama integration available")
                 else:
-                    logger.warning("Ollama connection failed. Ollama may not be running.")
+                    logger.warning("Ollama client initialization failed. Ollama may not be running or no models available.")
             except Exception as e:
                 logger.warning(f"Error initializing Ollama client: {str(e)}")
         
