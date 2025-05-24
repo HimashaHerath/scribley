@@ -1,11 +1,8 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useSubmit } from '@/lib/hooks';
-import { articleService, publicationService, type Article, type ArticleCreate } from '@/lib/api';
+import { useArticleForm } from '@/lib/hooks';
+import { type Article } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -13,12 +10,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useFetch } from '@/lib/hooks';
-import { ArrowLeft, Loader2, Image as ImageIcon, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { RichTextEditor } from '../articles/RichTextEditor';
+import ArticleEditorLayout from '../layout/ArticleEditorLayout';
+import { DraftSaveIndicator } from './DraftSaveIndicator';
 import '@/components/articles/editor.css';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { showInfo } from '@/components/ui/sonner';
 import { toast } from 'sonner';
+import { useEffect } from 'react';
 
 interface ArticleFormProps {
   article?: Article;
@@ -28,113 +27,125 @@ interface ArticleFormProps {
 type ArticleStatus = 'draft' | 'public' | 'unlisted';
 
 export default function ArticleForm({ article, isEditing = false }: ArticleFormProps) {
-  const navigate = useNavigate();
-  
-  // Form state
-  const [title, setTitle] = useState(article?.title || '');
-  const [subtitle, setSubtitle] = useState(article?.subtitle || '');
-  const [content, setContent] = useState(article?.content || '');
-  const [tags, setTags] = useState(article?.tags?.join(', ') || '');
-  const [status, setStatus] = useState<ArticleStatus>(
-    (article?.status as ArticleStatus) || 'draft'
-  );
-  const [publicationId, setPublicationId] = useState(
-    article?.publication_id || 'none'
-  );
-  const [showAPIWarning, setShowAPIWarning] = useState(true);
-  
-  // Fetch publications for select box
-  const { data: publications } = useFetch(publicationService.getAll, []);
-  
-  // Create article submission
-  const { submit: createArticle, isSubmitting: isCreating } = useSubmit<Article, ArticleCreate>(
-    (data) => articleService.create(data!),
-    {
-      onSuccess: (newArticle) => {
-        navigate(`/articles/${newArticle.id}`);
-      },
-      successMessage: 'Article created successfully'
-    }
-  );
-  
-  // Update article submission
-  const { submit: updateArticle, isSubmitting: isUpdating } = useSubmit<Article, { id: string; article: ArticleCreate }>(
-    (data) => 
-      articleService.update(data!.id, data!.article),
-    {
-      onSuccess: (updatedArticle) => {
-        navigate(`/articles/${updatedArticle.id}`);
-      },
-      successMessage: 'Article updated successfully'
-    }
-  );
-  
-  const isSubmitting = isCreating || isUpdating;
-  
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Use our custom hook to manage all form state and logic
+  const {
+    // Form state
+    title,
+    setTitle,
+    subtitle,
+    setSubtitle,
+    content,
+    setContent,
+    tags,
+    setTags,
+    status,
+    setStatus,
+    publicationId,
+    setPublicationId,
+    showAPIWarning,
+    setShowAPIWarning,
     
-    // Convert tags string to array
-    const tagsArray = tags
-      .split(',')
-      .map(tag => tag.trim())
-      .filter(tag => tag.length > 0);
+    // Draft recovery
+    isRecovered,
+    showDraftRecoveryNotice,
+    discardRecoveredDraft,
+    lastSavedFormatted,
+    triggerSaveDraft,
     
-    const articleData: ArticleCreate = {
-      title,
-      subtitle: subtitle || undefined,
-      content,
-      tags: tagsArray,
-      status: status,
-      publication_id: publicationId === 'none' ? undefined : publicationId
-    };
+    // AI Assistant state
+    isAssistantOpen,
+    toggleAssistantPanel,
     
-    if (isEditing && article) {
-      updateArticle({ id: article.id, article: articleData });
-    } else {
-      createArticle(articleData);
+    // Data
+    publications,
+    isSubmitting,
+    
+    // Handlers
+    handleSubmit,
+    handleInsertContent,
+    
+    // Navigation
+    goBack
+  } = useArticleForm(article, isEditing);
+  
+  // Show API warning using sonner
+  useEffect(() => {
+    const warningKey = 'mediumApiWarningDismissed';
+    const hasBeenDismissed = localStorage.getItem(warningKey);
+    const toastId = 'medium-api-deprecated-warning'; // Static ID for this specific warning
+
+    if (showAPIWarning && !hasBeenDismissed) {
+      toast.warning(
+        "Medium API Notice: Medium's official API was archived in March 2023. Scribley is currently using it in a limited capacity, but it may stop functioning at any time. Consider saving a backup of your content.",
+        {
+          id: toastId,
+          duration: Infinity,
+          action: {
+            label: "Dismiss",
+            onClick: () => {
+              localStorage.setItem(warningKey, 'true');
+              setShowAPIWarning(false);
+              toast.dismiss(toastId);
+            }
+          }
+        }
+      );
     }
-  };
+  }, [showAPIWarning, setShowAPIWarning]);
+  
+  // Show draft recovery notice using sonner
+  useEffect(() => {
+    if (isRecovered && showDraftRecoveryNotice) {
+      showInfo(
+        "A previously unsaved draft has been recovered. You can continue editing or discard it.",
+        "Draft Recovered",
+        {
+          action: {
+            label: "Discard Draft",
+            onClick: discardRecoveredDraft
+          }
+        }
+      );
+    }
+  }, [isRecovered, showDraftRecoveryNotice, discardRecoveredDraft]);
   
   return (
-    <div className="space-y-6">
-      <div className="flex items-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
-        <div className="ml-4">
-          <h1 className="text-2xl font-bold">
-            {isEditing ? 'Edit Article' : 'Create New Article'}
-          </h1>
+    <div className="space-y-6 min-w-0 w-full">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1"
+            onClick={goBack}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          <div className="ml-4">
+            <h1 className="text-2xl font-bold">
+              {isEditing ? 'Edit Article' : 'Create New Article'}
+            </h1>
+          </div>
         </div>
+        
+        {/* Draft save indicator */}
+        <DraftSaveIndicator 
+          lastSaved={lastSavedFormatted}
+          isRecovered={isRecovered && showDraftRecoveryNotice}
+          onDiscard={discardRecoveredDraft}
+        />
       </div>
       
-      {showAPIWarning && (
-        <Alert variant="warning" className="bg-amber-50 border-amber-200">
-          <AlertTriangle className="h-5 w-5 text-amber-600" />
-          <AlertTitle className="text-amber-800 font-medium">Medium API Notice</AlertTitle>
-          <AlertDescription className="text-amber-700">
-            Medium's official API was archived in March 2023. Scribley is currently using it in a limited capacity, but it may stop functioning at any time. Consider saving a backup of your content.
-            <Button
-              variant="link"
-              className="text-amber-800 p-0 h-auto ml-2"
-              onClick={() => setShowAPIWarning(false)}
-            >
-              Dismiss
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-4">
+      {/* Use ArticleEditorLayout for layout management */}
+      <ArticleEditorLayout 
+        onInsertContent={handleInsertContent}
+        onInsertTitle={setTitle}
+        isAssistantOpen={isAssistantOpen}
+        onAssistantToggle={toggleAssistantPanel}
+        saveDraft={triggerSaveDraft}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4 min-w-0 w-full">
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
             <Input
@@ -143,6 +154,7 @@ export default function ArticleForm({ article, isEditing = false }: ArticleFormP
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
+              className="min-w-0"
             />
           </div>
           
@@ -153,6 +165,7 @@ export default function ArticleForm({ article, isEditing = false }: ArticleFormP
               placeholder="Enter a subtitle or brief description"
               value={subtitle}
               onChange={(e) => setSubtitle(e.target.value)}
+              className="min-w-0"
             />
           </div>
           
@@ -162,6 +175,8 @@ export default function ArticleForm({ article, isEditing = false }: ArticleFormP
               value={content}
               onChange={setContent}
               placeholder="Write your article content..."
+              isAssistantOpen={isAssistantOpen}
+              onAssistantToggle={toggleAssistantPanel}
             />
           </div>
           
@@ -172,6 +187,7 @@ export default function ArticleForm({ article, isEditing = false }: ArticleFormP
               placeholder="productivity, writing, tips, programming"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
+              className="min-w-0"
             />
           </div>
           
@@ -210,25 +226,25 @@ export default function ArticleForm({ article, isEditing = false }: ArticleFormP
               </Select>
             </div>
           </div>
-        </div>
-        
-        <div className="flex justify-end space-x-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => navigate(-1)}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            {isEditing ? 'Update' : 'Create'} Article
-          </Button>
-        </div>
-      </form>
+          
+          <div className="flex justify-end space-x-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={goBack}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {isEditing ? 'Update' : 'Create'} Article
+            </Button>
+          </div>
+        </form>
+      </ArticleEditorLayout>
     </div>
   );
 } 
