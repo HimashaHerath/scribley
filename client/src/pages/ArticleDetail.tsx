@@ -1,6 +1,6 @@
-import { useParams, useNavigate, Link, Navigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useFetch, useSubmit } from '@/lib/hooks';
-import { articleService, publicationService, type Publication, type Article } from '@/lib/api';
+import { articleService, publicationService, type Publication } from '@/lib/api';
 import { formatDateTime, getStatusColor } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { 
@@ -177,6 +177,7 @@ export default function ArticleDetail() {
           >
             <Edit className="h-4 w-4 mr-2" /> Edit
           </Button>
+          
           <Button 
             variant="outline" 
             size="sm" 
@@ -245,8 +246,8 @@ export default function ArticleDetail() {
         </CardHeader>
         
         <CardContent className="prose dark:prose-invert max-w-none">
-          {/* In a real app, we would use a Markdown renderer here */}
-          <div className="whitespace-pre-wrap font-mono">{article.content}</div>
+          {/* Render the content as formatted Markdown */}
+          <ReactMarkdown>{article.content}</ReactMarkdown>
         </CardContent>
         
         {article.medium_url && (

@@ -21,26 +21,31 @@ class LLMSummaryRequest(BaseModel):
     text: str = Field(..., description="The article text to summarize")
     max_length: int = Field(150, description="Maximum length of the summary in words")
     provider: Optional[str] = Field(None, description="LLM provider to use (ollama or lmstudio)")
+    model: Optional[str] = Field(None, description="Specific model to use (e.g., llama3, gemma, mistral)")
 
 class LLMTagsRequest(BaseModel):
     text: str = Field(..., description="The article text to generate tags for")
     max_tags: int = Field(5, description="Maximum number of tags to generate")
     provider: Optional[str] = Field(None, description="LLM provider to use (ollama or lmstudio)")
+    model: Optional[str] = Field(None, description="Specific model to use (e.g., llama3, gemma, mistral)")
 
 class LLMTitleRequest(BaseModel):
     title: str = Field(..., description="The original title")
     text: str = Field(..., description="The article text")
     provider: Optional[str] = Field(None, description="LLM provider to use (ollama or lmstudio)")
+    model: Optional[str] = Field(None, description="Specific model to use (e.g., llama3, gemma, mistral)")
 
 class LLMIssuesRequest(BaseModel):
     text: str = Field(..., description="The article text to check for issues")
     provider: Optional[str] = Field(None, description="LLM provider to use (ollama or lmstudio)")
+    model: Optional[str] = Field(None, description="Specific model to use (e.g., llama3, gemma, mistral)")
 
 class LLMSocialPostRequest(BaseModel):
     title: str = Field(..., description="The article title")
     text: str = Field(..., description="The article text")
     platform: str = Field("twitter", description="Social media platform (twitter, linkedin, facebook, instagram)")
     provider: Optional[str] = Field(None, description="LLM provider to use (ollama or lmstudio)")
+    model: Optional[str] = Field(None, description="Specific model to use (e.g., llama3, gemma, mistral)")
 
 class LLMDraftArticleRequest(BaseModel):
     topic: str = Field(..., description="The main topic for the article")
@@ -48,11 +53,22 @@ class LLMDraftArticleRequest(BaseModel):
     length: str = Field("medium", description="Length of the article: 'short', 'medium', or 'long'")
     style: str = Field("informative", description="Writing style: 'informative', 'conversational', 'persuasive', or 'technical'")
     provider: Optional[str] = Field(None, description="LLM provider to use (ollama or lmstudio)")
+    model: Optional[str] = Field(None, description="Specific model to use (e.g., llama3, gemma, mistral)")
 
 class LLMProvidersResponse(BaseModel):
     providers: List[str] = Field([], description="List of available LLM providers")
     default_provider: Optional[str] = Field(None, description="Default LLM provider")
     is_available: bool = Field(False, description="Whether any LLM provider is available")
+
+class OllamaModel(BaseModel):
+    name: str = Field(..., description="Model name")
+    modified_at: str = Field(..., description="Last modified timestamp")
+    size: int = Field(..., description="Model size in bytes")
+    digest: str = Field(..., description="Model digest")
+    details: Optional[Dict[str, Any]] = Field(None, description="Additional model details")
+
+class OllamaModelsResponse(BaseModel):
+    models: List[OllamaModel] = Field([], description="List of available Ollama models")
 
 # --- Helper Functions ---
 
@@ -77,6 +93,37 @@ async def get_llm_providers():
         "is_available": llm_factory.is_available()
     }
 
+@router.get("/ollama/models", response_model=OllamaModelsResponse)
+async def get_ollama_models():
+    """Get list of available Ollama models."""
+    import requests
+    
+    try:
+        # Get the Ollama client to access base_url
+        client = get_llm_client("ollama")
+        if not client:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Ollama provider not available"
+            )
+        
+        # Call Ollama API to get available models
+        response = requests.get(f"{client.base_url}/api/tags", timeout=5)
+        if response.status_code == 200:
+            models_data = response.json().get("models", [])
+            return {"models": models_data}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to get models from Ollama: {response.status_code} - {response.text}"
+            )
+    except Exception as e:
+        logger.error(f"Error getting Ollama models: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get Ollama models: {str(e)}"
+        )
+
 @router.post("/summarize", response_model=Dict[str, str])
 async def summarize_text(request: LLMSummaryRequest):
     """
@@ -85,6 +132,12 @@ async def summarize_text(request: LLMSummaryRequest):
     client = get_client_or_error(request.provider)
     
     try:
+        # Set the model if specified
+        if request.model and hasattr(client, "set_model"):
+            import requests
+            if not client.set_model(request.model, requests):
+                logger.warning(f"Failed to set model to {request.model}, using current model {client.model} instead")
+        
         summary = client.summarize_article(request.text, max_length=request.max_length)
         return {"summary": summary}
     except Exception as e:
@@ -102,6 +155,12 @@ async def generate_tags(request: LLMTagsRequest):
     client = get_client_or_error(request.provider)
     
     try:
+        # Set the model if specified
+        if request.model and hasattr(client, "set_model"):
+            import requests
+            if not client.set_model(request.model, requests):
+                logger.warning(f"Failed to set model to {request.model}, using current model {client.model} instead")
+        
         tags = client.generate_tags(request.text, max_tags=request.max_tags)
         return {"tags": tags}
     except Exception as e:
@@ -119,6 +178,12 @@ async def improve_title(request: LLMTitleRequest):
     client = get_client_or_error(request.provider)
     
     try:
+        # Set the model if specified
+        if request.model and hasattr(client, "set_model"):
+            import requests
+            if not client.set_model(request.model, requests):
+                logger.warning(f"Failed to set model to {request.model}, using current model {client.model} instead")
+        
         improved_title = client.improve_title(request.title, request.text)
         return {"title": improved_title}
     except Exception as e:
@@ -136,6 +201,12 @@ async def check_issues(request: LLMIssuesRequest):
     client = get_client_or_error(request.provider)
     
     try:
+        # Set the model if specified
+        if request.model and hasattr(client, "set_model"):
+            import requests
+            if not client.set_model(request.model, requests):
+                logger.warning(f"Failed to set model to {request.model}, using current model {client.model} instead")
+        
         issues = client.check_for_issues(request.text)
         return issues
     except Exception as e:
@@ -153,6 +224,12 @@ async def generate_social_post(request: LLMSocialPostRequest):
     client = get_client_or_error(request.provider)
     
     try:
+        # Set the model if specified
+        if request.model and hasattr(client, "set_model"):
+            import requests
+            if not client.set_model(request.model, requests):
+                logger.warning(f"Failed to set model to {request.model}, using current model {client.model} instead")
+        
         # Find the appropriate method based on the client type
         if hasattr(client, "generate_social_post"):
             post = client.generate_social_post(request.title, request.text, platform=request.platform)
@@ -196,19 +273,18 @@ async def draft_article(request: LLMDraftArticleRequest):
     client = get_client_or_error(request.provider)
     
     try:
+        # Set the model if specified
+        if request.model and hasattr(client, "set_model"):
+            import requests
+            if not client.set_model(request.model, requests):
+                logger.warning(f"Failed to set model to {request.model}, using current model {client.model} instead")
+        
         draft = client.draft_article(
             topic=request.topic,
             outline=request.outline,
             length=request.length,
             style=request.style
         )
-        
-        if not draft:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to generate article draft. The response was empty."
-            )
-            
         return {"draft": draft}
     except Exception as e:
         logger.error(f"Error drafting article: {str(e)}")

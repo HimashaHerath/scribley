@@ -6,7 +6,7 @@ import { articleService } from '@/lib/api';
 export default function EditArticle() {
   const { id } = useParams<{ id: string }>();
   
-  const { data: article, isLoading, error } = useFetch(
+  const { data: article, loading: isLoading, error } = useFetch(
     () => id ? articleService.getById(id) : Promise.reject('No article ID'),
     [id]
   );

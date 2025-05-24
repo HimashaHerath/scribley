@@ -9,15 +9,14 @@ import {
   Settings, 
   Menu, 
   X,
-  LogOut,
   PlusCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFetch } from '@/lib/hooks';
 import { userService, type User } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { toast } from 'sonner';
 import { Skeleton } from '../ui/skeleton';
+import { ThemeToggle } from '../theme-toggle';
 
 // Navigation item type definition
 type NavItem = {
@@ -94,12 +93,12 @@ function Sidebar({
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed top-0 left-0 z-30 h-full w-72 bg-card shadow-lg transform transition-transform duration-300 ease-in-out lg:shadow-none lg:static lg:translate-x-0",
+          "fixed top-0 left-0 z-30 h-screen w-72 bg-card shadow-lg transform transition-transform duration-300 ease-in-out lg:shadow-none lg:static lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex flex-col h-full border-r">
-          <div className="p-5 flex items-center justify-between border-b">
+        <div className="flex flex-col h-full border-r min-h-screen overflow-y-auto">
+          <div className="p-5 flex items-center justify-between border-b sticky top-0 bg-card z-10">
             <h1 className="text-2xl font-bold tracking-tight">Scribley</h1>
             <Button variant="ghost" size="icon" onClick={onClose} className="lg:hidden hover:bg-background/10">
               <X size={20} />
@@ -118,7 +117,7 @@ function Sidebar({
             ))}
           </div>
           
-          <div className="p-4 border-t">
+          <div className="p-4 border-t sticky bottom-0 bg-card">
             <Button 
               className="w-full justify-start gap-2 py-6 bg-primary/10 hover:bg-primary/20 text-primary"
               variant="ghost"
@@ -137,12 +136,10 @@ function Sidebar({
 // User menu component
 function UserMenu({ 
   user, 
-  isLoading, 
-  onLogout 
+  isLoading
 }: { 
   user: User | null; 
   isLoading: boolean;
-  onLogout: () => void;
 }) {
   const getInitials = () => {
     if (!user?.name) return 'U';
@@ -166,9 +163,7 @@ function UserMenu({
       ) : (
         <span className="text-sm text-muted-foreground">Not connected</span>
       )}
-      <Button variant="ghost" size="icon" onClick={onLogout} title="Logout" className="hover:bg-destructive/10 hover:text-destructive">
-        <LogOut size={18} />
-      </Button>
+      <ThemeToggle />
     </div>
   );
 }
@@ -189,22 +184,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const closeSidebar = () => setSidebarOpen(false);
   
-  const handleLogout = () => {
-    localStorage.removeItem('MEDIUM_API_TOKEN');
-    toast.success('Logged out successfully');
-    
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
-  };
-  
   // Close sidebar when navigating
   useEffect(() => {
     closeSidebar();
   }, [location.pathname]);
   
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen h-screen overflow-hidden bg-background">
       <Sidebar 
         isOpen={sidebarOpen} 
         onClose={closeSidebar} 
@@ -212,7 +198,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       />
       
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden max-w-full">
         {/* Header */}
         <header className="h-16 border-b flex items-center justify-between px-4 lg:px-6 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
           <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden hover:bg-background/10">
@@ -222,14 +208,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="ml-auto">
             <UserMenu 
               user={user} 
-              isLoading={isLoading} 
-              onLogout={handleLogout} 
+              isLoading={isLoading}
             />
           </div>
         </header>
         
         {/* Main content */}
-        <main className="flex-1 p-4 lg:p-8 overflow-auto">
+        <main className="flex-1 p-4 lg:p-8 overflow-auto min-w-0 max-w-full">
           {children}
         </main>
       </div>

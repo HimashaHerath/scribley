@@ -1,0 +1,528 @@
+{
+  "info": {
+    "name": "Scribley API",
+    "description": "API collection for Scribley - a writing platform with AI features",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "LLM Features",
+      "description": "AI-powered features using local LLMs (Ollama)",
+      "item": [
+        {
+          "name": "Get LLM Providers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/llm/providers",
+              "host": ["{{base_url}}"],
+              "path": ["llm", "providers"]
+            },
+            "description": "Get available LLM providers and the default provider"
+          }
+        },
+        {
+          "name": "Get Ollama Models",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/llm/ollama/models",
+              "host": ["{{base_url}}"],
+              "path": ["llm", "ollama", "models"]
+            },
+            "description": "Get available Ollama models"
+          }
+        },
+        {
+          "name": "Summarize Text",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Artificial intelligence has rapidly transformed industries across the globe. From healthcare to finance, AI is enabling new possibilities and efficiencies. However, with these advancements come significant ethical considerations that must be addressed by policymakers and technologists alike.\",\n  \"max_length\": 50,\n  \"provider\": \"ollama\",\n  \"model\": \"llama3\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/llm/summarize",
+              "host": ["{{base_url}}"],
+              "path": ["llm", "summarize"]
+            },
+            "description": "Summarize an article text using a local LLM"
+          }
+        },
+        {
+          "name": "Generate Tags",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Artificial intelligence has rapidly transformed industries across the globe. From healthcare to finance, AI is enabling new possibilities and efficiencies. However, with these advancements come significant ethical considerations that must be addressed by policymakers and technologists alike.\",\n  \"max_tags\": 5,\n  \"provider\": \"ollama\",\n  \"model\": \"llama3\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/llm/tags",
+              "host": ["{{base_url}}"],
+              "path": ["llm", "tags"]
+            },
+            "description": "Generate tags for an article using a local LLM"
+          }
+        },
+        {
+          "name": "Improve Title",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"AI and Ethics\",\n  \"text\": \"Artificial intelligence has rapidly transformed industries across the globe. From healthcare to finance, AI is enabling new possibilities and efficiencies. However, with these advancements come significant ethical considerations that must be addressed by policymakers and technologists alike.\",\n  \"provider\": \"ollama\",\n  \"model\": \"llama3\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/llm/improve-title",
+              "host": ["{{base_url}}"],
+              "path": ["llm", "improve-title"]
+            },
+            "description": "Suggest an improved title for an article using a local LLM"
+          }
+        },
+        {
+          "name": "Check Issues",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Artificial intelligence has rapidly transformed industries across the globe. From healthcare to finance, AI is enabling new possibilities and efficiencies. However, with these advancements come significant ethical considerations that must be addressed by policymakers and technologists alike.\",\n  \"provider\": \"ollama\",\n  \"model\": \"llama3\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/llm/check-issues",
+              "host": ["{{base_url}}"],
+              "path": ["llm", "check-issues"]
+            },
+            "description": "Check an article for potential issues using a local LLM"
+          }
+        },
+        {
+          "name": "Generate Social Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"The Future of AI Ethics\",\n  \"text\": \"Artificial intelligence has rapidly transformed industries across the globe. From healthcare to finance, AI is enabling new possibilities and efficiencies. However, with these advancements come significant ethical considerations that must be addressed by policymakers and technologists alike.\",\n  \"platform\": \"twitter\",\n  \"provider\": \"ollama\",\n  \"model\": \"llama3\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/llm/social-post",
+              "host": ["{{base_url}}"],
+              "path": ["llm", "social-post"]
+            },
+            "description": "Generate a social media post for an article using a local LLM"
+          }
+        },
+        {
+          "name": "Draft Article",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"The Future of AI Ethics\",\n  \"outline\": [\"Introduction to AI ethics\", \"Current challenges\", \"Regulatory approaches\", \"Industry self-regulation\", \"Future outlook\"],\n  \"length\": \"medium\",\n  \"style\": \"informative\",\n  \"provider\": \"ollama\",\n  \"model\": \"llama3\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/llm/draft-article",
+              "host": ["{{base_url}}"],
+              "path": ["llm", "draft-article"]
+            },
+            "description": "Generate an article draft based on a topic and optional outline"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Articles",
+      "description": "Manage articles",
+      "item": [
+        {
+          "name": "Get All Articles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/articles",
+              "host": ["{{base_url}}"],
+              "path": ["articles"]
+            },
+            "description": "Get all articles for the current user"
+          }
+        },
+        {
+          "name": "Get Article by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/articles/{{article_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["articles", "{{article_id}}"]
+            },
+            "description": "Get a specific article by ID"
+          }
+        },
+        {
+          "name": "Create Article",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"New Article Title\",\n  \"subtitle\": \"Optional subtitle\",\n  \"content\": \"The content of the article goes here...\",\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"status\": \"draft\",\n  \"publication_id\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/articles",
+              "host": ["{{base_url}}"],
+              "path": ["articles"]
+            },
+            "description": "Create a new article"
+          }
+        },
+        {
+          "name": "Update Article",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Article Title\",\n  \"subtitle\": \"Updated subtitle\",\n  \"content\": \"The updated content of the article goes here...\",\n  \"tags\": [\"updated-tag1\", \"updated-tag2\"],\n  \"status\": \"public\",\n  \"publication_id\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/articles/{{article_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["articles", "{{article_id}}"]
+            },
+            "description": "Update an existing article"
+          }
+        },
+        {
+          "name": "Delete Article",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/articles/{{article_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["articles", "{{article_id}}"]
+            },
+            "description": "Delete an article"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Publications",
+      "description": "Manage publications",
+      "item": [
+        {
+          "name": "Get All Publications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/publications",
+              "host": ["{{base_url}}"],
+              "path": ["publications"]
+            },
+            "description": "Get all publications"
+          }
+        },
+        {
+          "name": "Get Publication by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/publications/{{publication_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["publications", "{{publication_id}}"]
+            },
+            "description": "Get a specific publication by ID"
+          }
+        },
+        {
+          "name": "Get Publication Contributors",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/publications/{{publication_id}}/contributors",
+              "host": ["{{base_url}}"],
+              "path": ["publications", "{{publication_id}}", "contributors"]
+            },
+            "description": "Get contributors for a specific publication"
+          }
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "description": "User-related endpoints",
+      "item": [
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Get the current user's profile"
+          }
+        },
+        {
+          "name": "Get User Publications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/me/publications",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "publications"]
+            },
+            "description": "Get publications associated with the current user"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Images",
+      "description": "Image upload and management",
+      "item": [
+        {
+          "name": "Upload Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/path/to/local/image.jpg"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/images/upload",
+              "host": ["{{base_url}}"],
+              "path": ["images", "upload"]
+            },
+            "description": "Upload an image file"
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api",
+      "type": "string",
+      "description": "The base URL for the Scribley API"
+    },
+    {
+      "key": "auth_token",
+      "value": "your-auth-token-here",
+      "type": "string",
+      "description": "Authorization token"
+    },
+    {
+      "key": "article_id",
+      "value": "article-id-here",
+      "type": "string",
+      "description": "ID of a specific article"
+    },
+    {
+      "key": "publication_id",
+      "value": "publication-id-here",
+      "type": "string",
+      "description": "ID of a specific publication"
+    }
+  ]
+} 

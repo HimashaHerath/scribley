@@ -29,17 +29,17 @@ import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AIAssistantPanel } from './AIAssistantPanel';
 
 interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
   placeholder?: string;
+  isAssistantOpen?: boolean;
+  onAssistantToggle?: () => void;
 }
 
 // Configure marked for security
@@ -50,14 +50,20 @@ marked.setOptions({
   // We'll use DOMPurify for sanitization instead
 });
 
-export function RichTextEditor({ value, onChange, className, placeholder }: RichTextEditorProps) {
+export function RichTextEditor({ 
+  value, 
+  onChange, 
+  className, 
+  placeholder,
+  isAssistantOpen = false,
+  onAssistantToggle
+}: RichTextEditorProps) {
   const [activeTab, setActiveTab] = useState<string>('edit');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showImageDropdown, setShowImageDropdown] = useState<boolean>(false);
   const [imageAlignment, setImageAlignment] = useState<'left' | 'center' | 'right'>('center');
   const [imageSize, setImageSize] = useState<'small' | 'medium' | 'large'>('medium');
   const [renderedHTML, setRenderedHTML] = useState<string>('');
-  const [isAssistantOpen, setIsAssistantOpen] = useState<boolean>(false);
   
   // Update rendered HTML when content or tab changes
   useEffect(() => {
@@ -145,23 +151,11 @@ export function RichTextEditor({ value, onChange, className, placeholder }: Rich
     }
   };
 
-  // Toggle the AI Assistant panel
+  // Toggle the AI Assistant panel using the parent's callback
   const toggleAssistantPanel = () => {
-    setIsAssistantOpen(prev => !prev);
-  };
-
-  // Handle content insertion from AI Assistant
-  const handleInsertFromAssistant = (content: string) => {
-    // Switch to edit tab if in preview mode
-    if (activeTab === 'preview') {
-      setActiveTab('edit');
+    if (onAssistantToggle) {
+      onAssistantToggle();
     }
-    
-    // Insert the content at the current cursor position
-    insertAtCursor(content);
-    
-    // Optionally close the assistant panel after insertion
-    // setIsAssistantOpen(false);
   };
 
   // Toolbar actions
@@ -179,8 +173,13 @@ export function RichTextEditor({ value, onChange, className, placeholder }: Rich
   };
 
   return (
-    <div className={cn("space-y-2", className)}>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+    <div 
+      className={cn(
+        "space-y-2 transition-all duration-300 ease-in-out min-w-0 max-w-full w-full overflow-hidden", 
+        className
+      )}
+    >
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full min-w-0">
         <div className="flex justify-between items-center mb-2">
           <TabsList>
             <TabsTrigger value="edit" className="flex items-center gap-1">
@@ -198,16 +197,22 @@ export function RichTextEditor({ value, onChange, className, placeholder }: Rich
             variant="outline"
             size="sm"
             onClick={toggleAssistantPanel}
-            className="flex items-center gap-1"
+            className={cn(
+              "flex items-center gap-1 transition-all duration-200",
+              isAssistantOpen ? "bg-primary/10 border-primary/20" : "hover:bg-primary/5"
+            )}
           >
-            <BrainCircuit className="h-4 w-4" />
+            <BrainCircuit className={cn(
+              "h-4 w-4 transition-colors",
+              isAssistantOpen ? "text-primary" : ""
+            )} />
             AI Assistant
           </Button>
         </div>
 
         <TabsContent value="edit" className="space-y-2">
           {/* Toolbar */}
-          <div className="flex flex-wrap items-center gap-1 p-1 border rounded-md bg-muted/30">
+          <div className="flex flex-wrap items-center gap-1 p-1 border rounded-md bg-muted/30 min-w-0 w-full overflow-x-auto">
             <Button 
               variant="ghost" 
               size="icon" 
@@ -381,15 +386,18 @@ export function RichTextEditor({ value, onChange, className, placeholder }: Rich
             placeholder={placeholder || "Start writing with markdown..."}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="min-h-[300px] font-mono text-sm"
+            className="h-[500px] font-mono text-sm min-w-0 w-full overflow-y-auto resize-none"
           />
         </TabsContent>
         <TabsContent value="preview" className="space-y-2">
           {/* Preview */}
-          <Card>
-            <CardContent className="p-4 prose max-w-none">
+          <Card className="min-w-0 w-full">
+            <CardContent className="p-4 prose max-w-none overflow-x-auto">
               {value.trim() ? (
-                <div dangerouslySetInnerHTML={{ __html: renderedHTML }} />
+                <div 
+                  dangerouslySetInnerHTML={{ __html: renderedHTML }} 
+                  style={{ whiteSpace: 'pre-line' }}
+                />
               ) : (
                 <div className="text-muted-foreground italic">Nothing to preview...</div>
               )}
@@ -397,13 +405,6 @@ export function RichTextEditor({ value, onChange, className, placeholder }: Rich
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* AI Assistant Panel */}
-      <AIAssistantPanel 
-        isOpen={isAssistantOpen} 
-        onClose={toggleAssistantPanel}
-        onInsertContent={handleInsertFromAssistant}
-      />
     </div>
   );
 } 

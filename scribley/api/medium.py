@@ -8,8 +8,10 @@ import logging
 from pathlib import Path
 from markdown import markdown
 import os
-from typing import Dict, Any, Optional, List
+import time
+from typing import Dict, Any, Optional, List, Callable
 from dotenv import load_dotenv
+import threading
 
 # Fix the relative import issue
 try:
@@ -30,7 +32,14 @@ except ImportError:
                 "notify_followers": False,
                 "content_format": "html",
                 "canonical_url": "",
-                "tags": []
+                "tags": [],
+                # Add rate limiting config
+                "rate_limit": {
+                    "calls_per_day": 300,     # Medium limits to ~300 calls per day
+                    "calls_per_hour": 50,     # Reasonable hourly limit
+                    "calls_per_minute": 10,   # Reasonable per-minute limit
+                    "min_request_interval": 1  # Minimum seconds between requests
+                }
             },
             "user_info": {
                 "name": "",
@@ -44,6 +53,151 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
+
+# Cache for Medium API responses
+medium_api_cache = {}
+CACHE_TTL = 300  # 5 minutes cache
+
+# Global rate limiter to prevent multiple instances from exceeding limits
+class MediumRateLimiter:
+    _instance = None
+    _lock = threading.Lock()
+    
+    def __new__(cls):
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super(MediumRateLimiter, cls).__new__(cls)
+                cls._instance._init()
+            return cls._instance
+    
+    def _init(self):
+        # Initialize the rate limiter
+        self.request_history = []
+        self.last_request_time = 0
+        config = get_config()
+        rate_limit = config.get("medium", {}).get("rate_limit", {})
+        self.calls_per_day = rate_limit.get("calls_per_day", 300)
+        self.calls_per_hour = rate_limit.get("calls_per_hour", 50)
+        self.calls_per_minute = rate_limit.get("calls_per_minute", 10)
+        self.min_request_interval = rate_limit.get("min_request_interval", 1)  # seconds
+        self.lock = threading.Lock()
+    
+    def check_rate_limit(self) -> bool:
+        """Check if rate limit allows another request"""
+        with self.lock:
+            current_time = time.time()
+            
+            # Enforce minimum interval between requests
+            time_since_last_request = current_time - self.last_request_time
+            if time_since_last_request < self.min_request_interval:
+                logger.warning(f"Rate limit: Minimum interval not met. Need to wait {self.min_request_interval - time_since_last_request:.2f} more seconds")
+                return False
+            
+            # Clean up old requests
+            day_ago = current_time - 86400  # 24 hours in seconds
+            self.request_history = [ts for ts in self.request_history if ts > day_ago]
+            
+            # Check daily limit
+            if len(self.request_history) >= self.calls_per_day:
+                logger.warning(f"Rate limit: Daily limit of {self.calls_per_day} requests reached")
+                return False
+            
+            # Check hourly limit
+            hour_ago = current_time - 3600
+            hourly_requests = len([ts for ts in self.request_history if ts > hour_ago])
+            if hourly_requests >= self.calls_per_hour:
+                logger.warning(f"Rate limit: Hourly limit of {self.calls_per_hour} requests reached")
+                return False
+            
+            # Check minute limit
+            minute_ago = current_time - 60
+            minute_requests = len([ts for ts in self.request_history if ts > minute_ago])
+            if minute_requests >= self.calls_per_minute:
+                logger.warning(f"Rate limit: Per-minute limit of {self.calls_per_minute} requests reached")
+                return False
+            
+            return True
+    
+    def record_request(self):
+        """Record that a request was made"""
+        with self.lock:
+            current_time = time.time()
+            self.request_history.append(current_time)
+            self.last_request_time = current_time
+    
+    def wait_for_rate_limit(self):
+        """Wait until rate limit allows the request"""
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            if self.check_rate_limit():
+                return True
+            
+            # Calculate how long to wait based on which limit was hit
+            with self.lock:
+                current_time = time.time()
+                
+                # Check minimum interval
+                time_since_last_request = current_time - self.last_request_time
+                if time_since_last_request < self.min_request_interval:
+                    wait_time = self.min_request_interval - time_since_last_request + 0.1
+                else:
+                    # Check which limit is closest to freeing up
+                    minute_ago = current_time - 60
+                    minute_requests = [ts for ts in self.request_history if ts > minute_ago]
+                    if len(minute_requests) >= self.calls_per_minute and minute_requests:
+                        # Wait until oldest minute request expires
+                        wait_time = (minute_requests[0] + 60) - current_time + 0.1
+                    else:
+                        # Default wait
+                        wait_time = 5
+            
+            logger.info(f"Rate limit: Waiting {wait_time:.2f} seconds before retry")
+            time.sleep(wait_time)
+            retry_count += 1
+        
+        logger.error("Rate limit: Max retries exceeded")
+        return False
+
+# Function to use as a decorator for API methods that need rate limiting
+def rate_limited(func):
+    """Decorator for rate-limited API calls"""
+    def wrapper(*args, **kwargs):
+        rate_limiter = MediumRateLimiter()
+        
+        # Try to get from cache for GET methods
+        cache_key = None
+        if func.__name__ in ['get_current_user', 'get_user_publications', 'get_post', 'get_publication_contributors']:
+            cache_key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
+            if cache_key in medium_api_cache:
+                cache_entry = medium_api_cache[cache_key]
+                if time.time() - cache_entry['timestamp'] < CACHE_TTL:
+                    logger.info(f"Using cached response for {func.__name__}")
+                    return cache_entry['data']
+        
+        # Wait for rate limit to allow the request
+        if not rate_limiter.wait_for_rate_limit():
+            raise Exception(f"Rate limit exceeded for Medium API: {func.__name__}")
+        
+        # Execute the API call
+        try:
+            result = func(*args, **kwargs)
+            rate_limiter.record_request()
+            
+            # Cache the result for GET methods
+            if cache_key:
+                medium_api_cache[cache_key] = {
+                    'data': result,
+                    'timestamp': time.time()
+                }
+            
+            return result
+        except Exception as e:
+            logger.error(f"Error in rate-limited API call {func.__name__}: {str(e)}")
+            raise
+    
+    return wrapper
 
 class MediumAPIClient:
     """Client for interacting with the Medium API"""
@@ -69,6 +223,7 @@ class MediumAPIClient:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
     
+    @rate_limited
     def get_current_user(self) -> Dict[str, Any]:
         """Get the current user's information"""
         url = f"{self.BASE_URL}/me"
@@ -97,6 +252,7 @@ class MediumAPIClient:
             logger.error(f"Unexpected error in get_current_user: {str(e)}. URL: {url}", exc_info=True)
             raise # Re-raise to be handled by caller
     
+    @rate_limited
     def get_user_publications(self, user_id: str) -> List[Dict[str, Any]]:
         """Get publications that the user is a contributor to"""
         response = requests.get(
@@ -106,6 +262,7 @@ class MediumAPIClient:
         response.raise_for_status()
         return response.json().get("data", [])
     
+    @rate_limited
     def create_post(
         self,
         user_id: str,
@@ -152,6 +309,7 @@ class MediumAPIClient:
         response.raise_for_status()
         return response.json()
     
+    @rate_limited
     def get_post(self, post_id: str) -> Dict[str, Any]:
         """Get a specific post by ID"""
         response = requests.get(
@@ -161,6 +319,7 @@ class MediumAPIClient:
         response.raise_for_status()
         return response.json()
     
+    @rate_limited
     def get_publication_contributors(self, publication_id: str) -> List[Dict[str, Any]]:
         """Get contributors for a publication"""
         response = requests.get(
@@ -170,6 +329,7 @@ class MediumAPIClient:
         response.raise_for_status()
         return response.json().get("data", [])
     
+    @rate_limited
     def upload_image(self, image_data: bytes, filename: str, content_type: str) -> Dict[str, Any]:
         """
         Upload an image to Medium.
