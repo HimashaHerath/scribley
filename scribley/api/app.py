@@ -9,10 +9,11 @@ import logging
 from fastapi import Request
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import HTMLResponse
+from contextlib import asynccontextmanager
 
 from .routers import articles, publications, users, llm
 from ..database.init_db import init_db
-from ..database.config import get_db, engine, Base
 from scribley.api.medium import MediumAPIClient
 
 # Configure logging
@@ -27,6 +28,7 @@ app = FastAPI(
     title="Scribley API",
     description="API for Medium automation",
     version="0.1.0",
+    lifespan=asynccontextmanager(app_lifespan)
 )
 
 # Rate limiting middleware
@@ -41,7 +43,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.max_requests = max_requests
         self.window_seconds = window_seconds
-        self.exclude_paths = exclude_paths or ["/", "/api/health"]
+        self.exclude_paths = exclude_paths or ["/", "/api/health", "/docs", "/openapi.json"]
         self.requests = {}
 
     async def dispatch(self, request: Request, call_next):
@@ -114,18 +116,50 @@ allowed_headers = ["Authorization", "Content-Type"] if not DEBUG else ["*"]
 
 logger.info(f"CORS origins configured: {allowed_origins}")
 
+# Add lifespan context manager for app startup and shutdown
+@asynccontextmanager
+async def app_lifespan(app: FastAPI):
+    # Startup
+    logger.info("Application startup...")
+    medium_token = os.getenv("MEDIUM_API_TOKEN")
+    if not medium_token:
+        logger.warning("MEDIUM_API_TOKEN environment variable not set. Medium API client will not be initialized.")
+        app.state.medium_client = None
+    else:
+        try:
+            medium_client = MediumAPIClient(token=medium_token)
+            # Perform a simple test call to ensure the client is working (optional but good)
+            # Test by trying to get current user, this also initializes the rate limiter early
+            # await medium_client.get_current_user() # This is a good test
+            # logger.info("Medium API client initialized and tested successfully.")
+            # Simpler initialization without test call:
+            app.state.medium_client = medium_client
+            logger.info("Medium API client initialized.")
+        except Exception as e:
+            logger.error(f"Failed to initialize Medium API client: {e}", exc_info=True)
+            app.state.medium_client = None # Ensure it's None if init fails
+
+    # Initialize database
+    logger.info("Initializing database...")
+    try:
+        init_db() # Assuming init_db is synchronous. If it needs to be async, adjust.
+        logger.info("Database initialization complete.")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}", exc_info=True)
+        # Depending on severity, you might want to prevent app startup
+
+    yield # Application is running
+
+    # Shutdown
+    logger.info("Application shutdown...")
+    if hasattr(app.state, 'medium_client') and app.state.medium_client:
+        logger.info("Closing Medium API client...")
+        await app.state.medium_client.close_async_client()
+        logger.info("Medium API client closed.")
+    else:
+        logger.info("Medium API client was not initialized or already closed.")
+
 # Add middleware
-from starlette.responses import HTMLResponse
-
-# Add middleware for rate limiting if not in debug mode
-if not DEBUG:
-    app.add_middleware(
-        RateLimitMiddleware,
-        max_requests=RATE_LIMIT_MAX,
-        window_seconds=rate_limit_seconds
-    )
-    logger.info(f"Rate limiting enabled: {RATE_LIMIT_MAX} requests per {RATE_LIMIT_WINDOW}")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -136,20 +170,14 @@ app.add_middleware(
     max_age=86400  # 24 hours cache for preflight requests
 )
 
-# Initialize API settings
-@app.on_event("startup")
-async def startup_event():
-    """Initialize API settings and database"""
-    # Check if Medium API token is set
-    medium_token = os.getenv("MEDIUM_API_TOKEN")
-    if not medium_token:
-        logger.warning("MEDIUM_API_TOKEN environment variable not set. API functionality will be limited.")
-        logger.warning("Please set your Medium API token to enable full functionality.")
-    
-    # Initialize database
-    logger.info("Initializing database...")
-    init_db()
-    logger.info("Database initialization complete.")
+# Add middleware for rate limiting if not in debug mode
+if not DEBUG:
+    app.add_middleware(
+        RateLimitMiddleware,
+        max_requests=RATE_LIMIT_MAX,
+        window_seconds=rate_limit_seconds
+    )
+    logger.info(f"Rate limiting enabled: {RATE_LIMIT_MAX} requests per {RATE_LIMIT_WINDOW}")
 
 @app.get("/")
 async def root():
