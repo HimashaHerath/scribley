@@ -24,7 +24,6 @@ import {
   Loader2,
   X,
   Pencil,
-  Book,
   ChevronLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -56,7 +55,6 @@ export function AIAssistantPanel({
   // UI State
   const [activeTab, setActiveTab] = useState<string>('draft');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [generatedContent, setGeneratedContent] = useState<string>('');
   
   // LLM providers and models state
   const [providers, setProviders] = useState<string[]>([]);
@@ -123,10 +121,10 @@ export function AIAssistantPanel({
     if (!draftTopic.trim()) return;
     
     setIsLoading(true);
-    setGeneratedContent('');
-    
+    // We will not use generatedContent for preview anymore
+    // setGeneratedContent(''); 
+
     try {
-      // Parse outline points from text area
       const outlinePoints = draftOutline
         .split('\n')
         .map(line => line.trim())
@@ -141,44 +139,42 @@ export function AIAssistantPanel({
         selectedModel || undefined
       );
       
-      setGeneratedContent(result.draft);
+      if (result.draft) {
+        // Logic to extract title and content, then insert
+        const contentLines = result.draft.split('\n');
+        let title = '';
+        let contentWithoutTitle = result.draft;
+        
+        if (contentLines.length > 0) {
+          const firstLine = contentLines[0].trim();
+          if (firstLine.startsWith('# ') || firstLine.startsWith('## ')) {
+            title = firstLine.replace(/^#+\s+/, '');
+            contentWithoutTitle = contentLines.slice(1).join('\n').trim();
+          } else if ((firstLine.startsWith('**') && firstLine.endsWith('**')) || 
+                     (firstLine.startsWith('__') && firstLine.endsWith('__'))) {
+            title = firstLine.replace(/^\*\*|\*\*$|^__|__$/g, '');
+            contentWithoutTitle = contentLines.slice(1).join('\n').trim();
+          }
+        }
+        
+        onInsertContent(contentWithoutTitle, title);
+        saveDraft();
+        
+        // Clear form or close panel after successful generation and insertion
+        // setDraftTopic('');
+        // setDraftOutline('');
+        // setGeneratedContent(''); // Ensure this is cleared if it was used for any brief state
+        // onClose(); // Optionally close the panel
+      } else {
+        // Handle cases where no draft is returned, maybe show a notification
+        console.warn('No draft content was generated.');
+      }
+
     } catch (error) {
       console.error('Error generating draft:', error);
-      // You could add a toast notification here
+      // You could add a toast notification here to inform the user
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Handle inserting the generated content into the editor
-  const handleInsertContent = () => {
-    if (generatedContent) {
-      // Extract title from the first line if it looks like a Markdown heading
-      const contentLines = generatedContent.split('\n');
-      let title = '';
-      let contentWithoutTitle = generatedContent;
-      
-      // Check if first line is a heading (# or ## format or surrounded by ** or __)
-      if (contentLines.length > 0) {
-        const firstLine = contentLines[0].trim();
-        if (firstLine.startsWith('# ') || firstLine.startsWith('## ')) {
-          // Remove the # or ## prefix
-          title = firstLine.replace(/^#+\s+/, '');
-          
-          // Remove the first line from content
-          contentWithoutTitle = contentLines.slice(1).join('\n').trim();
-        } else if ((firstLine.startsWith('**') && firstLine.endsWith('**')) || 
-                  (firstLine.startsWith('__') && firstLine.endsWith('__'))) {
-          // Remove the ** or __ wrappers
-          title = firstLine.replace(/^\*\*|\*\*$|^__|__$/g, '');
-          
-          // Remove the first line from content
-          contentWithoutTitle = contentLines.slice(1).join('\n').trim();
-        }
-      }
-      
-      onInsertContent(contentWithoutTitle, title);
-      saveDraft();
     }
   };
 
@@ -186,7 +182,7 @@ export function AIAssistantPanel({
   const handleClearForm = () => {
     setDraftTopic('');
     setDraftOutline('');
-    setGeneratedContent('');
+    // setGeneratedContent(''); // Removed as no longer used
   };
 
   return (
@@ -226,227 +222,195 @@ export function AIAssistantPanel({
             
             {/* Draft Generation Tab */}
             <TabsContent value="draft" className="space-y-4">
-              {!generatedContent ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Generate Article Draft</CardTitle>
-                    <CardDescription>
-                      Create an AI-generated article draft based on your topic
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* AI Provider and Model Selection */}
-                    <div>
-                      <h3 className="text-sm font-semibold mb-3 pb-1 border-b">AI Model</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label htmlFor="provider" className="text-sm font-medium">AI Provider</label>
-                          <Select
-                            value={selectedProvider}
-                            onValueChange={setSelectedProvider}
-                            disabled={providers.length === 0}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Generate Article Draft</CardTitle>
+                  <CardDescription>
+                    Create an AI-generated article draft based on your topic
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* AI Provider and Model Selection */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 pb-1 border-b">AI Model</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="provider" className="text-sm font-medium">AI Provider</label>
+                        <Select
+                          value={selectedProvider}
+                          onValueChange={setSelectedProvider}
+                          disabled={providers.length === 0}
+                        >
+                          <SelectTrigger 
+                            className="h-9 hover:border-primary focus:ring-1 focus:ring-primary"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <SelectTrigger 
-                              className="h-9 hover:border-primary focus:ring-1 focus:ring-primary"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <SelectValue placeholder="Select provider" />
-                            </SelectTrigger>
-                            <SelectContent 
-                              position="popper" 
-                              sideOffset={5}
-                              className="z-[200]"
-                            >
-                              {providers.map(provider => (
-                                <SelectItem 
-                                  key={provider} 
-                                  value={provider}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {provider.charAt(0).toUpperCase() + provider.slice(1)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <label htmlFor="model" className="text-sm font-medium">Model</label>
-                          <Select
-                            value={selectedModel}
-                            onValueChange={setSelectedModel}
-                            disabled={selectedProvider !== 'ollama' || isLoadingModels || ollamaModels.length === 0}
+                            <SelectValue placeholder="Select provider" />
+                          </SelectTrigger>
+                          <SelectContent 
+                            position="popper" 
+                            sideOffset={5}
+                            className="z-[200]"
                           >
-                            <SelectTrigger 
-                              className="h-9 hover:border-primary focus:ring-1 focus:ring-primary"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {isLoadingModels ? (
-                                <div className="flex items-center">
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  <span>Loading...</span>
-                                </div>
-                              ) : (
-                                <SelectValue placeholder="Select model" />
-                              )}
-                            </SelectTrigger>
-                            <SelectContent 
-                              position="popper" 
-                              sideOffset={5}
-                              className="z-[200]"
-                            >
-                              {ollamaModels.map(model => (
-                                <SelectItem 
-                                  key={model.name} 
-                                  value={model.name}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {model.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                            {providers.map(provider => (
+                              <SelectItem 
+                                key={provider} 
+                                value={provider}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label htmlFor="model" className="text-sm font-medium">Model</label>
+                        <Select
+                          value={selectedModel}
+                          onValueChange={setSelectedModel}
+                          disabled={selectedProvider !== 'ollama' || isLoadingModels || ollamaModels.length === 0}
+                        >
+                          <SelectTrigger 
+                            className="h-9 hover:border-primary focus:ring-1 focus:ring-primary"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {isLoadingModels ? (
+                              <div className="flex items-center">
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                <span>Loading...</span>
+                              </div>
+                            ) : (
+                              <SelectValue placeholder="Select model" />
+                            )}
+                          </SelectTrigger>
+                          <SelectContent 
+                            position="popper" 
+                            sideOffset={5}
+                            className="z-[200]"
+                          >
+                            {ollamaModels.map(model => (
+                              <SelectItem 
+                                key={model.name} 
+                                value={model.name}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {model.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
+                  </div>
 
-                    <div>
-                      <h3 className="text-sm font-semibold mb-3 pb-1 border-b">Article Content</h3>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label htmlFor="topic" className="text-sm font-medium">Topic</label>
-                          <Input
-                            id="topic"
-                            placeholder="Enter the main topic of your article"
-                            value={draftTopic}
-                            onChange={(e) => setDraftTopic(e.target.value)}
-                            className="h-9 transition-all hover:border-primary focus:ring-1 focus:ring-primary"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <label htmlFor="outline" className="text-sm font-medium">Outline (Optional)</label>
-                          <Textarea
-                            id="outline"
-                            placeholder="Enter outline points, one per line"
-                            value={draftOutline}
-                            onChange={(e) => setDraftOutline(e.target.value)}
-                            rows={4}
-                            className="min-h-[100px] resize-y transition-all hover:border-primary focus:ring-1 focus:ring-primary"
-                          />
-                        </div>
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 pb-1 border-b">Article Content</h3>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label htmlFor="topic" className="text-sm font-medium">Topic</label>
+                        <Input
+                          id="topic"
+                          placeholder="Enter the main topic of your article"
+                          value={draftTopic}
+                          onChange={(e) => setDraftTopic(e.target.value)}
+                          className="h-9 transition-all hover:border-primary focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label htmlFor="outline" className="text-sm font-medium">Outline (Optional)</label>
+                        <Textarea
+                          id="outline"
+                          placeholder="Enter outline points, one per line"
+                          value={draftOutline}
+                          onChange={(e) => setDraftOutline(e.target.value)}
+                          rows={4}
+                          className="min-h-[100px] resize-y transition-all hover:border-primary focus:ring-1 focus:ring-primary"
+                        />
                       </div>
                     </div>
-                    
-                    {/* Length and Writing Style controls */}
-                    <div>
-                      <h3 className="text-sm font-semibold mb-3 pb-1 border-b">Article Parameters</h3>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label htmlFor="length" className="text-sm font-medium">Length</label>
-                          <Select
-                            value={draftLength}
-                            onValueChange={setDraftLength}
+                  </div>
+                  
+                  {/* Length and Writing Style controls */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 pb-1 border-b">Article Parameters</h3>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label htmlFor="length" className="text-sm font-medium">Length</label>
+                        <Select
+                          value={draftLength}
+                          onValueChange={setDraftLength}
+                        >
+                          <SelectTrigger 
+                            className="h-9 hover:border-primary focus:ring-1 focus:ring-primary"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <SelectTrigger 
-                              className="h-9 hover:border-primary focus:ring-1 focus:ring-primary"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <SelectValue placeholder="Select length" />
-                            </SelectTrigger>
-                            <SelectContent 
-                              position="popper" 
-                              sideOffset={5}
-                              className="z-[200]"
-                            >
-                              <SelectItem value="short" onClick={(e) => e.stopPropagation()}>Short (~500 words)</SelectItem>
-                              <SelectItem value="medium" onClick={(e) => e.stopPropagation()}>Medium (~1000 words)</SelectItem>
-                              <SelectItem value="long" onClick={(e) => e.stopPropagation()}>Long (~2000 words)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <label htmlFor="style" className="text-sm font-medium">Writing Style</label>
-                          <Select
-                            value={draftStyle}
-                            onValueChange={setDraftStyle}
+                            <SelectValue placeholder="Select length" />
+                          </SelectTrigger>
+                          <SelectContent 
+                            position="popper" 
+                            sideOffset={5}
+                            className="z-[200]"
                           >
-                            <SelectTrigger 
-                              className="h-9 hover:border-primary focus:ring-1 focus:ring-primary"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <SelectValue placeholder="Select style" />
-                            </SelectTrigger>
-                            <SelectContent 
-                              position="popper" 
-                              sideOffset={5}
-                              className="z-[200]"
-                            >
-                              <SelectItem value="informative" onClick={(e) => e.stopPropagation()}>Informative</SelectItem>
-                              <SelectItem value="conversational" onClick={(e) => e.stopPropagation()}>Conversational</SelectItem>
-                              <SelectItem value="persuasive" onClick={(e) => e.stopPropagation()}>Persuasive</SelectItem>
-                              <SelectItem value="technical" onClick={(e) => e.stopPropagation()}>Technical</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                            <SelectItem value="short" onClick={(e) => e.stopPropagation()}>Short (~500 words)</SelectItem>
+                            <SelectItem value="medium" onClick={(e) => e.stopPropagation()}>Medium (~1000 words)</SelectItem>
+                            <SelectItem value="long" onClick={(e) => e.stopPropagation()}>Long (~2000 words)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label htmlFor="style" className="text-sm font-medium">Writing Style</label>
+                        <Select
+                          value={draftStyle}
+                          onValueChange={setDraftStyle}
+                        >
+                          <SelectTrigger 
+                            className="h-9 hover:border-primary focus:ring-1 focus:ring-primary"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <SelectValue placeholder="Select style" />
+                          </SelectTrigger>
+                          <SelectContent 
+                            position="popper" 
+                            sideOffset={5}
+                            className="z-[200]"
+                          >
+                            <SelectItem value="informative" onClick={(e) => e.stopPropagation()}>Informative</SelectItem>
+                            <SelectItem value="conversational" onClick={(e) => e.stopPropagation()}>Conversational</SelectItem>
+                            <SelectItem value="persuasive" onClick={(e) => e.stopPropagation()}>Persuasive</SelectItem>
+                            <SelectItem value="technical" onClick={(e) => e.stopPropagation()}>Technical</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-between pt-2 border-t">
-                    <Button variant="outline" onClick={handleClearForm}>
-                      Clear
-                    </Button>
-                    <Button 
-                      onClick={handleGenerateDraft} 
-                      disabled={!draftTopic.trim() || isLoading}
-                      className="transition-all hover:bg-primary/90"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="mr-2 h-4 w-4" />
-                          Generate Draft
-                        </>
-                      )}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex justify-between items-center">
-                      Draft Preview
-                      <Button variant="ghost" size="sm" onClick={() => setGeneratedContent('')}>
-                        <X className="w-4 h-4 mr-2" />
-                        Close
-                      </Button>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="bg-muted/30 rounded-md p-4 max-h-[500px] overflow-y-auto border">
-                      {generatedContent.split('\n').map((line, i) => (
-                        <p key={i} className={i !== 0 ? "mt-2" : ""}>
-                          {line}
-                        </p>
-                      ))}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="border-t pt-3">
-                    <Button 
-                      onClick={handleInsertContent} 
-                      className="w-full transition-all hover:bg-primary/90 gap-2"
-                    >
-                      <Book className="h-4 w-4" />
-                      Insert into Editor
-                    </Button>
-                  </CardFooter>
-                </Card>
-              )}
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between pt-2 border-t">
+                  <Button variant="outline" onClick={handleClearForm}>
+                    Clear
+                  </Button>
+                  <Button 
+                    onClick={handleGenerateDraft} 
+                    disabled={!draftTopic.trim() || isLoading}
+                    className="transition-all hover:bg-primary/90"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Generate & Insert
+                      </>
+                    )}
+                  </Button>
+                </CardFooter>
+              </Card>
             </TabsContent>
             
             {/* Writing Tools Tab */}
